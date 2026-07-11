@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-service
+  namespace: default
+  labels:
+    app: backend-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend-service
+  template:
+    metadata:
+      labels:
+        app: backend-service
+    spec:
+      containers:
+        - name: backend-service
+          # IMAGE_PLACEHOLDER is replaced by the CI/CD workflow with the real
+          # ECR image URI + commit SHA tag on every deploy — see
+          # .github/workflows/deploy.yml
+          image: IMAGE_PLACEHOLDER
+          ports:
+            - containerPort: 8000
+          env:
+            # All 5 of these come from the 'rds-credentials' K8s Secret,
+            # which External Secrets Operator synced from AWS Secrets
+            # Manager in Phase 7. This pod never sees Secrets Manager or
+            # AWS credentials directly.
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: rds-credentials
+                  key: host
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: rds-credentials
+                  key: port
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: rds-credentials
+                  key: dbname
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rds-credentials
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rds-credentials
+                  key: password
+          resources:
+            # Deliberately small — matches our t3.micro node reality (see
+            # README's Phase 3 "pod density" section). Real production would
+            # size these based on actual load testing, not node constraints.
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
