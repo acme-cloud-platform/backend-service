@@ -2,7 +2,7 @@ import os
 import logging
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException
 from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -11,6 +11,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("backend-service")
 
 app = FastAPI(title="acme-cloud backend-service")
+
+# All routes live under /api — this matches the Ingress path in
+# k8s/ingress.yaml. The ALB forwards the full request path (including /api)
+# to the pod rather than stripping it, so the app's routes must include the
+# same prefix or every request 404s.
+router = APIRouter(prefix="/api")
 
 
 def get_db_connection():
@@ -60,13 +66,13 @@ def startup_check_db():
         # separately, so k8s doesn't loop-restart on a transient DB hiccup.
 
 
-@app.get("/healthz")
+@router.get("/healthz")
 def healthz():
     """Liveness/readiness probe target — checked by Kubernetes, see k8s/deployment.yaml."""
     return {"status": "ok"}
 
 
-@app.get("/readyz")
+@router.get("/readyz")
 def readyz():
     """Deeper check: confirms the pod can actually reach RDS, not just that the process is alive."""
     try:
@@ -77,7 +83,7 @@ def readyz():
         raise HTTPException(status_code=503, detail=f"DB unreachable: {e}")
 
 
-@app.post("/order")
+@router.post("/order")
 def create_order(order: OrderRequest):
     try:
         conn = get_db_connection()
@@ -96,7 +102,7 @@ def create_order(order: OrderRequest):
         raise HTTPException(status_code=500, detail="Could not create order")
 
 
-@app.get("/orders")
+@router.get("/orders")
 def list_orders():
     conn = get_db_connection()
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -104,3 +110,6 @@ def list_orders():
         rows = cur.fetchall()
     conn.close()
     return rows
+
+
+app.include_router(router)
