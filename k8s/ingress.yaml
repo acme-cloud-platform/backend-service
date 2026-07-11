@@ -5,12 +5,16 @@ metadata:
   namespace: default
   annotations:
     kubernetes.io/ingress.class: alb
-    # internet-facing = public ALB; the controller places it in subnets
-    # tagged kubernetes.io/role/elb (our public subnets from Phase 2)
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /api/healthz
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    # Same group.name as frontend-service's Ingress — merges both into ONE
+    # shared ALB instead of two separate load balancers. Lower group.order
+    # evaluates first, so /api (more specific) is matched before frontend's
+    # catch-all "/" rule.
+    alb.ingress.kubernetes.io/group.name: acme-cloud-poc
+    alb.ingress.kubernetes.io/group.order: "1"
 spec:
   rules:
     - http:
