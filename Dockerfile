@@ -10,7 +10,7 @@
 # time of writing. If Docker Hub ever deprecates this exact tag, bump to
 # the next available 3.11.x patch release — check
 # https://hub.docker.com/_/python/tags before changing.
-FROM python:3.11.27-slim AS builder
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
