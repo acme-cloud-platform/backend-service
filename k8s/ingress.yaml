@@ -10,10 +10,12 @@ metadata:
     alb.ingress.kubernetes.io/healthcheck-path: /api/healthz
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
     # Same group.name as frontend-service's Ingress — merges both into ONE
-    # shared ALB instead of two separate load balancers. Lower group.order
-    # evaluates first, so /api (more specific) is matched before frontend's
-    # catch-all "/" rule.
-    alb.ingress.kubernetes.io/group.name: acme-cloud-poc
+    # shared ALB per environment instead of two separate load balancers.
+    # INGRESS_GROUP_PLACEHOLDER is substituted by the workflow with
+    # acme-cloud-poc / acme-cloud-dev / acme-cloud-qa depending on which
+    # branch triggered the deploy — each environment gets its OWN shared
+    # ALB, never crossing into another environment's group.
+    alb.ingress.kubernetes.io/group.name: INGRESS_GROUP_PLACEHOLDER
     alb.ingress.kubernetes.io/group.order: "1"
 spec:
   rules:
